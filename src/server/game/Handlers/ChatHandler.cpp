@@ -236,6 +236,34 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
         }
     }
 
+	//CUSTOM DEATHKNELL COLORS STAFF CHAT
+	//SEC_PLAYER,SEC_VIP,SEC_MODERATOR,SEC_DEVELOPER,SEC_GAMEMASTER,SEC_SENIOR,SEC_HEAD,SEC_LORD,SEC_ADMINISTRATOR,SEC_CONSOLE
+	switch (sender->GetSession()->GetSecurity())
+	{
+		case SEC_MODERATOR:
+			msg ="|cfffa9900" + msg;
+			break;
+		case SEC_DEVELOPER:
+			msg ="|cfffa9900" + msg;
+			break;
+		case SEC_GAMEMASTER:
+			msg ="|cfffa9900" + msg;
+			break;
+		case SEC_SENIOR:
+			msg ="|cfffa9900" + msg;
+			break;
+		case SEC_HEAD:
+			msg ="|cfffa9900" + msg;
+			break;
+		case SEC_LORD:
+			msg ="|cfffa9900" + msg;
+			break;
+		case SEC_ADMINISTRATOR:
+			msg ="|cfffa9900" + msg;
+			break;
+	}
+	//END CUSTOM DEATHKNELL COLORS STAFF CHAT
+
     switch (type)
     {
         case CHAT_MSG_SAY:
@@ -286,6 +314,13 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recvData)
                 SendNotification(GetTrinityString(LANG_GM_SILENCE), GetPlayer()->GetName().c_str());
                 return;
             }
+
+			//DEATHKNELL CUSTOM, if the gm rank of the sender is lower than the gm rank of the reiver, and whispers are off, do not whisper
+			if (sender->GetSession()->GetSecurity() < receiver->GetSession()->GetSecurity() && !receiver->isAcceptWhispers())
+			{
+				SendPlayerNotFoundNotice(to);
+				return;
+			}
 
             // If player is a Gamemaster and doesn't accept whisper, we auto-whitelist every player that the Gamemaster is talking to
             // We also do that if a player is under the required level for whispers.
