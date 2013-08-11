@@ -146,6 +146,8 @@ enum WorldBoolConfigs
     CONFIG_CHATLOG_PUBLIC,
     CONFIG_CHATLOG_ADDON,
     CONFIG_CHATLOG_BGROUND,
+	CONFIG_RESET_SPELLS_AFTER_DUEL,
+    CONFIG_PVP_TITLE_SYSTEM_ENABLE,
     CONFIG_AUTOBROADCAST,
     CONFIG_ALLOW_TICKETS,
     CONFIG_DBC_ENFORCE_ITEM_ATTRIBUTES,
@@ -575,6 +577,11 @@ class World
         /// Get the current Message of the Day
         const char* GetMotd() const;
 
+		/// Set PVP Ranks
+        void SetPVPRanks(const std::string& pvpranks);
+        /// Get PVP Ranks
+        const char* GetPVPRanks() const;
+
         /// Set the string for new characters (first login)
         void SetNewCharString(std::string const& str) { m_newCharString = str; }
         /// Get the string for new characters (first login)
@@ -796,6 +803,7 @@ class World
         bool m_allowMovement;
         std::string m_motd;
         std::string m_dataPath;
+		std::string m_pvp_ranks;
 
         // for max speed access
         static float m_MaxVisibleDistanceOnContinents;

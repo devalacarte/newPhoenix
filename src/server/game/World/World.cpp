@@ -1195,6 +1195,11 @@ void World::LoadConfigSettings(bool reload)
     // Max instances per hour
     m_int_configs[CONFIG_MAX_INSTANCES_PER_HOUR] = sConfigMgr->GetIntDefault("AccountInstancesPerHour", 5);
 
+	// Custom DK stuff
+    m_bool_configs[CONFIG_RESET_SPELLS_AFTER_DUEL] = sConfigMgr->GetBoolDefault("ResetArenaSpellsAfterDuel.Enable", false);
+    m_bool_configs[CONFIG_PVP_TITLE_SYSTEM_ENABLE] = sConfigMgr->GetBoolDefault("PVPTitleSystem.Enable", false);
+    SetPVPRanks(sConfigMgr->GetStringDefault("PvPRank.HKPerRank", "100,500,1000,2000,4000,5000,6000,8000,10000,15000,25000,40000,45000,50000"));
+
     // AutoBroadcast
     m_bool_configs[CONFIG_AUTOBROADCAST] = sConfigMgr->GetBoolDefault("AutoBroadcast.On", false);
     m_int_configs[CONFIG_AUTOBROADCAST_CENTER] = sConfigMgr->GetIntDefault("AutoBroadcast.Center", 0);
@@ -3177,4 +3182,14 @@ void World::ReloadRBAC()
     for (SessionMap::const_iterator itr = m_sessions.begin(); itr != m_sessions.end(); ++itr)
         if (WorldSession* session = itr->second)
             session->InvalidateRBACData();
+}
+
+void World::SetPVPRanks(const std::string& pvpranks)
+{
+    m_pvp_ranks = pvpranks;
+}
+
+const char* World::GetPVPRanks() const
+{
+    return m_pvp_ranks.c_str();
 }
