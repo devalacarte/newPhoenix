@@ -10,7 +10,12 @@
 
 set(scripts_STAT_SRCS
   ${scripts_STAT_SRCS}
-Custom/CustomCommandScript.cpp
+Custom/Custom_CommandScript.cpp
+Custom/Custom_PlayerScripts.cpp
+Custom/Custom_DBScripts.cpp
+Custom/Custom_PortalMaster.cpp
+Custom/Custom_Misc.cpp
+Custom/Custom_BossFightOne.cpp
 )
 
 message("  -> Prepared: Custom")
