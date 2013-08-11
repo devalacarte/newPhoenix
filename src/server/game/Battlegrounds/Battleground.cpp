@@ -524,7 +524,7 @@ inline void Battleground::_ProcessJoin(uint32 diff)
                     BattlegroundQueueTypeId bgQueueTypeId = sBattlegroundMgr->BGQueueTypeId(m_TypeID, GetArenaType());
                     uint32 queueSlot = player->GetBattlegroundQueueIndex(bgQueueTypeId);
                     sBattlegroundMgr->BuildBattlegroundStatusPacket(&status, this, queueSlot, STATUS_IN_PROGRESS, 0, GetStartTime(), GetArenaType(), player->GetBGTeam());
-                    player->GetSession()->SendPacket(&status);
+                    player->SendDirectMessage(&status);
 
                     player->RemoveAurasDueToSpell(SPELL_ARENA_PREPARATION);
                     player->ResetAllPowers();
@@ -639,20 +639,19 @@ void Battleground::SendPacketToAll(WorldPacket* packet)
 {
     for (BattlegroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
         if (Player* player = _GetPlayer(itr, "SendPacketToAll"))
-            player->GetSession()->SendPacket(packet);
+            player->SendDirectMessage(packet);
 }
 
 void Battleground::SendPacketToTeam(uint32 TeamID, WorldPacket* packet, Player* sender, bool self)
 {
     for (BattlegroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
+    {
         if (Player* player = _GetPlayerForTeam(TeamID, itr, "SendPacketToTeam"))
+        {
             if (self || sender != player)
-            {
-                WorldSession* session = player->GetSession();
-                TC_LOG_DEBUG(LOG_FILTER_BATTLEGROUND, "%s %s - SendPacketToTeam %u, Player: %s", GetOpcodeNameForLogging(packet->GetOpcode()).c_str(),
-                    session->GetPlayerInfo().c_str(), TeamID, sender ? sender->GetName().c_str() : "null");
-                session->SendPacket(packet);
-            }
+                player->SendDirectMessage(packet);
+        }
+    }
 }
 
 void Battleground::PlaySoundToAll(uint32 SoundID)
@@ -669,7 +668,7 @@ void Battleground::PlaySoundToTeam(uint32 SoundID, uint32 TeamID)
         if (Player* player = _GetPlayerForTeam(TeamID, itr, "PlaySoundToTeam"))
         {
             sBattlegroundMgr->BuildPlaySoundPacket(&data, SoundID);
-            player->GetSession()->SendPacket(&data);
+            player->SendDirectMessage(&data);
         }
 }
 
@@ -694,7 +693,7 @@ void Battleground::YellToAll(Creature* creature, char const* text, uint32 langua
         {
             WorldPacket data(SMSG_MESSAGECHAT, 200);
             creature->BuildMonsterChat(&data, CHAT_MSG_MONSTER_YELL, text, language, creature->GetName(), itr->first);
-            player->GetSession()->SendPacket(&data);
+            player->SendDirectMessage(&data);
         }
 }
 
@@ -720,11 +719,11 @@ void Battleground::UpdateWorldState(uint32 Field, uint32 Value)
     SendPacketToAll(&data);
 }
 
-void Battleground::UpdateWorldStateForPlayer(uint32 Field, uint32 Value, Player* Source)
+void Battleground::UpdateWorldStateForPlayer(uint32 field, uint32 value, Player* player)
 {
     WorldPacket data;
-    sBattlegroundMgr->BuildUpdateWorldStatePacket(&data, Field, Value);
-    Source->GetSession()->SendPacket(&data);
+    sBattlegroundMgr->BuildUpdateWorldStatePacket(&data, field, value);
+    player->SendDirectMessage(&data);
 }
 
 void Battleground::EndBattleground(uint32 winner)
@@ -891,6 +890,78 @@ void Battleground::EndBattleground(uint32 winner)
         uint32 loser_kills = player->GetRandomWinner() ? BG_REWARD_LOSER_HONOR_LAST : BG_REWARD_LOSER_HONOR_FIRST;
         uint32 winner_arena = player->GetRandomWinner() ? BG_REWARD_WINNER_ARENA_LAST : BG_REWARD_WINNER_ARENA_FIRST;
 
+		// Reward winner team
+		//BG TOKENS: Pvp BG reward token
+			uint32 reward_winner_count = 3;
+			uint32 reward_loser_count = 1;
+			uint32 reward_wsg = 20558;
+			uint32 reward_ab = 20559;
+			uint32 reward_av = 20560;
+			uint32 reward_IOQ = 47395;
+			uint32 reward_SOTA = 42425;
+			uint32 reward_eos = 29024;
+			uint32 reward_deathknell = 103129;
+		if (team == winner)
+		{
+			switch(player->GetZoneId())
+            {
+				case 3277: // Warsong Gulch
+					player->AddItem(reward_wsg, reward_winner_count);
+					player->AddItem(reward_deathknell, 1);
+                    break;
+                case 3358: // Arathi Basin
+                   player->AddItem(reward_ab, reward_winner_count);
+				   player->AddItem(reward_deathknell, 1);
+                    break;
+                case 3820: // Eye of the Storm
+                    player->AddItem(reward_eos, reward_winner_count);
+					player->AddItem(reward_deathknell, 1);
+                    break;
+				case 4710: // IOQ	
+                    player->AddItem(reward_IOQ, reward_winner_count);
+					player->AddItem(reward_deathknell, 1);
+					break;
+				case 4384: // reward_SOTA
+                    player->AddItem(reward_SOTA, reward_winner_count);
+					player->AddItem(reward_deathknell, 1);
+					break;
+				case 2597: // AV
+                    player->AddItem(reward_av, reward_winner_count);
+					player->AddItem(reward_deathknell, 1);
+					break;
+                default:
+                    break;
+            }
+		}
+		else     // Losers
+		{
+			switch(player->GetZoneId())
+            {
+                case 3277: // Warsong Gulch
+                    player->AddItem(reward_wsg, reward_loser_count);
+                    break;
+                case 3358: // Arathi Basin
+                   player->AddItem(reward_ab, reward_loser_count);
+                    break;
+                case 3820: // Eye of the Storm
+                    player->AddItem(reward_eos, reward_loser_count);
+                    break;
+				case 4710: // IOQ
+                    player->AddItem(reward_IOQ, reward_loser_count);
+					break;
+				case 4384: // SOTA
+                    player->AddItem(reward_SOTA, reward_loser_count);
+					break;
+				case 2597: // AV
+                    player->AddItem(reward_av, reward_loser_count);
+					break;
+                default:
+                    break;
+		}
+	}                 // DONT RETURN, Else below wont encounter.
+
+//BG TOKENS: END
+
         // Reward winner team
         if (team == winner)
         {
@@ -916,11 +987,11 @@ void Battleground::EndBattleground(uint32 winner)
 
         BlockMovement(player);
 
-        player->GetSession()->SendPacket(&pvpLogData);
+        player->SendDirectMessage(&pvpLogData);
 
         WorldPacket data;
         sBattlegroundMgr->BuildBattlegroundStatusPacket(&data, this, player->GetBattlegroundQueueIndex(bgQueueTypeId), STATUS_IN_PROGRESS, TIME_TO_AUTOREMOVE, GetStartTime(), GetArenaType(), player->GetBGTeam());
-        player->GetSession()->SendPacket(&data);
+        player->SendDirectMessage(&data);
         player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_COMPLETE_BATTLEGROUND, 1);
     }
 
@@ -1023,7 +1094,7 @@ void Battleground::RemovePlayerAtLeave(uint64 guid, bool Transport, bool SendPac
             {
                 WorldPacket data;
                 sBattlegroundMgr->BuildBattlegroundStatusPacket(&data, this, player->GetBattlegroundQueueIndex(bgQueueTypeId), STATUS_NONE, 0, 0, 0, 0);
-                player->GetSession()->SendPacket(&data);
+                player->SendDirectMessage(&data);
             }
 
             // this call is important, because player, when joins to battleground, this method is not called, so it must be called when leaving bg
@@ -1727,8 +1798,7 @@ void Battleground::SendWarningToAll(int32 entry, ...)
     data << (uint8)0;
     for (BattlegroundPlayerMap::const_iterator itr = m_Players.begin(); itr != m_Players.end(); ++itr)
         if (Player* player = ObjectAccessor::FindPlayer(MAKE_NEW_GUID(itr->first, 0, HIGHGUID_PLAYER)))
-            if (player->GetSession())
-                player->GetSession()->SendPacket(&data);
+            player->SendDirectMessage(&data);
 }
 
 void Battleground::SendMessage2ToAll(int32 entry, ChatMsg type, Player const* source, int32 arg1, int32 arg2)
@@ -1860,10 +1930,10 @@ void Battleground::PlayerAddedToBGCheckIfBGIsRunning(Player* player)
     BlockMovement(player);
 
     sBattlegroundMgr->BuildPvpLogDataPacket(&data, this);
-    player->GetSession()->SendPacket(&data);
+    player->SendDirectMessage(&data);
 
     sBattlegroundMgr->BuildBattlegroundStatusPacket(&data, this, player->GetBattlegroundQueueIndex(bgQueueTypeId), STATUS_IN_PROGRESS, GetEndTime(), GetStartTime(), GetArenaType(), player->GetBGTeam());
-    player->GetSession()->SendPacket(&data);
+    player->SendDirectMessage(&data);
 }
 
 uint32 Battleground::GetAlivePlayersCountByTeam(uint32 Team) const
@@ -1966,4 +2036,10 @@ void Battleground::HandleAreaTrigger(Player* player, uint32 trigger)
 {
     TC_LOG_DEBUG(LOG_FILTER_BATTLEGROUND, "Unhandled AreaTrigger %u in Battleground %u. Player coords (x: %f, y: %f, z: %f)",
                    trigger, player->GetMapId(), player->GetPositionX(), player->GetPositionY(), player->GetPositionZ());
+}
+
+bool Battleground::CheckAchievementCriteriaMeet(uint32 criteriaId, Player const* /*source*/, Unit const* /*target*/, uint32 /*miscvalue1*/)
+{
+    TC_LOG_ERROR(LOG_FILTER_BATTLEGROUND, "Battleground::CheckAchievementCriteriaMeet: No implementation for criteria %u", criteriaId);
+    return false;
 }
