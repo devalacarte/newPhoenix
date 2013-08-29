@@ -30,7 +30,11 @@ public:
 //////////////////////////////////////////
 */
 //			    SW  Darn  IF  EXO  ORG   UD   SM   TB
-int cities[]={1519,1657,1537,3557,1637,1497,3487,1638};
+//int cities[]={1519,1657,1537,3557,1637,1497,3487,1638}; //not accepted in linux
+//std::vector<int> cities = {1519,1657,1537,3557,1637,1497,3487,1638}; //not accepted in windows
+const int nCities = 8;
+int cities[nCities]={1519,1657,1537,3557,1637,1497,3487,1638};
+
 #define HYJALZONE				   616
 #define HYJALPVPTOKEN			600000
 #define CITYPVPTOKEN			600001
@@ -48,9 +52,28 @@ public:
 	{
 		if (killer->GetZoneId() == HYJALZONE)
 			killer->AddItem(HYJALPVPTOKEN,1);
-		for each (int city in cities){
+		
+		//doesn't work in linux
+		/*for each (int city in cities){
 			if (killer->GetZoneId() == city)
 				killer->AddItem(CITYPVPTOKEN,1);
+		}*/
+
+		//doesn't work in windows
+		/*for (int i=0;i<cities.size();i++)
+		{
+			if (killer->GetZoneId()==cities[i])
+			{
+				killer->AddItem(CITYPVPTOKEN,1);
+			}
+		}*/
+
+		for (int i=0;i<nCities;i++)
+		{
+			if (killer->GetZoneId()==cities[i])
+			{
+				killer->AddItem(CITYPVPTOKEN,1);
+			}
 		}
 	}
 };
@@ -95,44 +118,44 @@ class Custom_Killingstreak : public PlayerScript
 		{
 			char msg[250];
 			/*case 1:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				break;*/
 
 			/*case 10:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				break;*/
 
 			case 25:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				Killer->AddItem(KILLINGSTREAKTOKEN,1);
 				break;
 
 			/*case 30:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				break;
 
 			/*case 40:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				break;*/
 
 			case 50:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				Killer->AddItem(KILLINGSTREAKTOKEN,2);
 				break;
 
 			case 60:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				break;
 
 			case 70:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				break;
 			
@@ -140,12 +163,12 @@ class Custom_Killingstreak : public PlayerScript
 				Killer->AddItem(KILLINGSTREAKTOKEN,2);
 			
 			case 80:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				break;
 
 			case 90:
-				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s is on a killstreak of %u!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				break;
 
