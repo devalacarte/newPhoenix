@@ -173,7 +173,7 @@ class Custom_Killingstreak : public PlayerScript
 				break;
 
 			case 100:
-				snprintf(msg, 250, "[PvP System]: %s WON THE KILL STREAK ROUND of %u kills and got 10 tokens as a reward!!!!", Killer->GetName(), KillStreakData[KillerGUID].killstreak);
+				snprintf(msg, 250, "[PvP System]: %s WON THE KILL STREAK ROUND of %u kills and got 10 tokens as a reward!!!!", Killer->GetName().c_str(), KillStreakData[KillerGUID].killstreak);
 				sWorld->SendServerMessage(SERVER_MSG_STRING, msg);
 				Killer->AddItem(KILLINGSTREAKTOKEN,10);
 				break;
