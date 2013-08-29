@@ -6631,17 +6631,20 @@ void ObjectMgr::LoadPetNumber()
 
 std::string ObjectMgr::GeneratePetName(uint32 entry)
 {
-    StringVector & list0 = _petHalfName0[entry];
-    StringVector & list1 = _petHalfName1[entry];
+    StringVector& list0 = _petHalfName0[entry];
+    StringVector& list1 = _petHalfName1[entry];
 
     if (list0.empty() || list1.empty())
     {
         CreatureTemplate const* cinfo = GetCreatureTemplate(entry);
-        char* petname = GetPetName(cinfo->family, sWorld->GetDefaultDbcLocale());
-        if (!petname)
-            return cinfo->Name;
+        if (!cinfo)
+            return std::string();
 
-        return std::string(petname);
+        char* petname = GetPetName(cinfo->family, sWorld->GetDefaultDbcLocale());
+        if (petname)
+            return std::string(petname);
+        else
+            return cinfo->Name;
     }
 
     return *(list0.begin()+urand(0, list0.size()-1)) + *(list1.begin()+urand(0, list1.size()-1));
@@ -6696,8 +6699,8 @@ void ObjectMgr::LoadReputationRewardRate()
 
     _repRewardRateStore.clear();                             // for reload case
 
-    uint32 count = 0; //                                0          1             2                  3                  4                 5             6
-    QueryResult result = WorldDatabase.Query("SELECT faction, quest_rate, quest_daily_rate, quest_weekly_rate, quest_monthly_rate, creature_rate, spell_rate FROM reputation_reward_rate");
+    uint32 count = 0; //                                0          1             2                  3                  4                 5                      6             7
+    QueryResult result = WorldDatabase.Query("SELECT faction, quest_rate, quest_daily_rate, quest_weekly_rate, quest_monthly_rate, quest_repeatable_rate, creature_rate, spell_rate FROM reputation_reward_rate");
     if (!result)
     {
         TC_LOG_ERROR(LOG_FILTER_SERVER_LOADING, ">> Loaded `reputation_reward_rate`, table is empty!");
@@ -6716,8 +6719,9 @@ void ObjectMgr::LoadReputationRewardRate()
         repRate.questDailyRate      = fields[2].GetFloat();
         repRate.questWeeklyRate     = fields[3].GetFloat();
         repRate.questMonthlyRate    = fields[4].GetFloat();
-        repRate.creatureRate        = fields[5].GetFloat();
-        repRate.spellRate           = fields[6].GetFloat();
+        repRate.questRepeatableRate = fields[5].GetFloat();
+        repRate.creatureRate        = fields[6].GetFloat();
+        repRate.spellRate           = fields[7].GetFloat();
 
         FactionEntry const* factionEntry = sFactionStore.LookupEntry(factionId);
         if (!factionEntry)
@@ -6747,6 +6751,12 @@ void ObjectMgr::LoadReputationRewardRate()
         if (repRate.questMonthlyRate < 0.0f)
         {
             TC_LOG_ERROR(LOG_FILTER_SQL, "Table reputation_reward_rate has quest_monthly_rate with invalid rate %f, skipping data for faction %u", repRate.questMonthlyRate, factionId);
+            continue;
+        }
+
+        if (repRate.questRepeatableRate < 0.0f)
+        {
+            TC_LOG_ERROR(LOG_FILTER_SQL, "Table reputation_reward_rate has quest_repeatable_rate with invalid rate %f, skipping data for faction %u", repRate.questRepeatableRate, factionId);
             continue;
         }
 
@@ -8202,10 +8212,8 @@ void ObjectMgr::LoadGossipMenuItems()
     _gossipMenuItemsStore.clear();
 
     QueryResult result = WorldDatabase.Query(
-        //          0              1            2           3              4
-        "SELECT menu_id, id, option_icon, option_text, option_id, npc_option_npcflag, "
-        //       5              6           7          8         9
-        "action_menu_id, action_poi_id, box_coded, box_money, box_text "
+        //      0        1   2            3            4          5                   6               7              8          9          10
+        "SELECT menu_id, id, option_icon, option_text, option_id, npc_option_npcflag, action_menu_id, action_poi_id, box_coded, box_money, box_text "
         "FROM gossip_menu_option ORDER BY menu_id, id");
 
     if (!result)
