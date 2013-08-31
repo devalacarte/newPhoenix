@@ -247,8 +247,11 @@ public:
             // check offline security
             if (handler->HasLowerSecurity(NULL, targetGuid))
                 return false;
-			message << "INSERT INTO character_gm_rights VALUES('" << GUID_LOPART(targetGuid) << "','"<<accountid <<  "','" << targetName << " added by: " << m_session->GetPlayerName() << "');";
+			Field * fields = accountid->Fetch();
+			uint32 accId = fields[0].GetUInt32();
+			message << "INSERT INTO character_gm_rights VALUES('" << GUID_LOPART(targetGuid) << "','"<< accId <<  "','" << targetName << " added by: " << m_session->GetPlayerName() << "');";
         }
+
 		CharacterDatabase.Execute(message.str().c_str());
 		m_session->SendNotification("New GM added");
 		return true;
