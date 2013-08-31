@@ -406,9 +406,15 @@ class PvEReportScript : public PlayerScript
 							
 							//reports to database
 							std::stringstream str;
-							str << "INSERT INTO `pve_reports` (`KillerName`, `KillerGuid`, `KillerAccount`, `ItemEntry`, `ItemGuid`, `KilledName`, `KilledGuid`,`PlayersKilled`) VALUES ('";
+							str << "INSERT INTO `pve_reports` (`KillerName`, `KillerGuid`, `KillerAccount`, `ItemEntry`, `ItemGuid`, `KilledName`, `KilledGuid`,`KilledAccount`,`AreaId`,`ZoneId`) VALUES ('";
+							//killer related
 							str << Killer->GetSession()->GetPlayerName() << "','" << Killer->GetGUIDLow() << "','" << Killer->GetSession()->GetAccountId() << "','";
-							str << item->GetTemplate()->ItemId << "','" << item->GetGUIDLow() << "','" << Victim->GetSession()->GetPlayerName()<< "','"<< Victim->GetGUIDLow() << "');";
+							//item related
+							str << item->GetTemplate()->ItemId << "','" << item->GetGUIDLow() << "','";
+							//killed player related
+							str << Victim->GetSession()->GetPlayerName()<< "','"<< Victim->GetGUIDLow()<< "','"<< Victim->GetSession()->GetAccountId()<< "','";
+							//place related
+							str << Victim->GetAreaId()<< "','"<< Victim->GetZoneId() << "');";
 							CharacterDatabase.Execute(str.str().c_str());
 						}
 
