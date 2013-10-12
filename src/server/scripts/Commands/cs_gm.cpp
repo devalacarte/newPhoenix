@@ -40,18 +40,18 @@ public:
     {
         static ChatCommand gmCommandTable[] =
         {
-            { "chat",           SEC_MODERATOR,      false, &HandleGMChatCommand,              "", NULL },
-            { "fly",            SEC_ADMINISTRATOR,  false, &HandleGMFlyCommand,               "", NULL },
-            { "ingame",         SEC_PLAYER,         true,  &HandleGMListIngameCommand,        "", NULL },
-            { "list",           SEC_ADMINISTRATOR,  true,  &HandleGMListFullCommand,          "", NULL },
-            { "visible",        SEC_MODERATOR,      false, &HandleGMVisibleCommand,           "", NULL },
-            { "",               SEC_MODERATOR,      false, &HandleGMCommand,                  "", NULL },
-            { NULL,             0,                  false, NULL,                              "", NULL }
+            { "chat",    rbac::RBAC_PERM_COMMAND_GM_CHAT,    false, &HandleGMChatCommand,       "", NULL },
+            { "fly",     rbac::RBAC_PERM_COMMAND_GM_FLY,     false, &HandleGMFlyCommand,        "", NULL },
+            { "ingame",  rbac::RBAC_PERM_COMMAND_GM_INGAME,   true, &HandleGMListIngameCommand, "", NULL },
+            { "list",    rbac::RBAC_PERM_COMMAND_GM_LIST,     true, &HandleGMListFullCommand,   "", NULL },
+            { "visible", rbac::RBAC_PERM_COMMAND_GM_VISIBLE, false, &HandleGMVisibleCommand,    "", NULL },
+            { "",        rbac::RBAC_PERM_COMMAND_GM,         false, &HandleGMCommand,           "", NULL },
+            { NULL,      0,                            false, NULL,                       "", NULL }
         };
         static ChatCommand commandTable[] =
         {
-            { "gm",             SEC_MODERATOR,      false, NULL,                     "", gmCommandTable },
-            { NULL,             0,                  false, NULL,                               "", NULL }
+            { "gm", rbac::RBAC_PERM_COMMAND_GM, false, NULL, "", gmCommandTable },
+            { NULL, 0,                    false, NULL, "", NULL }
         };
         return commandTable;
     }
@@ -63,7 +63,7 @@ public:
         {
             if (!*args)
             {
-                if (session->HasPermission(RBAC_PERM_CHAT_USE_STAFF_BADGE) && session->GetPlayer()->isGMChat())
+                if (session->HasPermission(rbac::RBAC_PERM_CHAT_USE_STAFF_BADGE) && session->GetPlayer()->isGMChat())
                     session->SendNotification(LANG_GM_CHAT_ON);
                 else
                     session->SendNotification(LANG_GM_CHAT_OFF);
@@ -129,7 +129,7 @@ public:
         {
             AccountTypes itrSec = itr->second->GetSession()->GetSecurity();
             if ((itr->second->IsGameMaster() ||
-                (itr->second->GetSession()->HasPermission(RBAC_PERM_COMMANDS_APPEAR_IN_GM_LIST) &&
+                (itr->second->GetSession()->HasPermission(rbac::RBAC_PERM_COMMANDS_APPEAR_IN_GM_LIST) &&
                  itrSec <= AccountTypes(sWorld->getIntConfig(CONFIG_GM_LEVEL_IN_GM_LIST)))) &&
                 (!handler->GetSession() || itr->second->IsVisibleGloballyFor(handler->GetSession()->GetPlayer())))
             {

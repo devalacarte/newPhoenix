@@ -445,8 +445,14 @@ int WorldSocket::Update (void)
     if (closing_)
         return -1;
 
-    if (m_OutActive || (m_OutBuffer->length() == 0 && msg_queue()->is_empty()))
+    if (m_OutActive)
         return 0;
+
+    {
+        ACE_GUARD_RETURN (LockType, Guard, m_OutBufferLock, 0);
+        if (m_OutBuffer->length() == 0 && msg_queue()->is_empty())
+            return 0;
+    }
 
     int ret;
     do
@@ -980,7 +986,7 @@ int WorldSocket::HandlePing (WorldPacket& recvPacket)
             {
                 ACE_GUARD_RETURN (LockType, Guard, m_SessionLock, -1);
 
-                if (m_Session && !m_Session->HasPermission(RBAC_PERM_SKIP_CHECK_OVERSPEED_PING))
+                if (m_Session && !m_Session->HasPermission(rbac::RBAC_PERM_SKIP_CHECK_OVERSPEED_PING))
                 {
                     TC_LOG_ERROR(LOG_FILTER_NETWORKIO, "WorldSocket::HandlePing: %s kicked for over-speed pings (address: %s)",
                         m_Session->GetPlayerInfo().c_str(), GetRemoteAddress().c_str());
@@ -998,7 +1004,10 @@ int WorldSocket::HandlePing (WorldPacket& recvPacket)
         ACE_GUARD_RETURN (LockType, Guard, m_SessionLock, -1);
 
         if (m_Session)
+        {
             m_Session->SetLatency (latency);
+            m_Session->ResetClientTimeDelay();
+        }
         else
         {
             TC_LOG_ERROR(LOG_FILTER_NETWORKIO, "WorldSocket::HandlePing: peer sent CMSG_PING, "

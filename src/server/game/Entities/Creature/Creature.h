@@ -195,7 +195,7 @@ struct CreatureBaseStats
 
     uint32 GenerateHealth(CreatureTemplate const* info) const
     {
-        return uint32((BaseHealth[info->expansion] * info->ModHealth) + 0.5f);
+        return uint32(ceil(BaseHealth[info->expansion] * info->ModHealth));
     }
 
     uint32 GenerateMana(CreatureTemplate const* info) const
@@ -204,12 +204,12 @@ struct CreatureBaseStats
         if (!BaseMana)
             return 0;
 
-        return uint32((BaseMana * info->ModMana) + 0.5f);
+        return uint32(ceil(BaseMana * info->ModMana));
     }
 
     uint32 GenerateArmor(CreatureTemplate const* info) const
     {
-        return uint32((BaseArmor * info->ModArmor) + 0.5f);
+        return uint32(ceil(BaseArmor * info->ModArmor));
     }
 
     static CreatureBaseStats const* GetBaseStats(uint8 level, uint8 unitClass);
@@ -609,7 +609,7 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
 
         void SendAIReaction(AiReaction reactionType);
 
-        Unit* SelectNearestTarget(float dist = 0) const;
+        Unit* SelectNearestTarget(float dist = 0, bool playerOnly = false) const;
         Unit* SelectNearestTargetInAttackDistance(float dist = 0) const;
         Player* SelectNearestPlayer(float distance = 0) const;
         Unit* SelectNearestHostileUnitInAggroRange(bool useLOS = false) const;
@@ -703,6 +703,11 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
 
         bool m_isTempWorldObject; //true when possessed
 
+        // Handling caster facing during spellcast
+        void SetTarget(uint64 guid);
+        void FocusTarget(Spell const* focusSpell, WorldObject const* target);
+        void ReleaseFocus(Spell const* focusSpell);
+
     protected:
         bool CreateFromProto(uint32 guidlow, uint32 Entry, uint32 vehId, uint32 team, const CreatureData* data = NULL);
         bool InitEntry(uint32 entry, uint32 team=ALLIANCE, const CreatureData* data=NULL);
@@ -762,6 +767,8 @@ class Creature : public Unit, public GridObject<Creature>, public MapCreature
         //Formation var
         CreatureGroup* m_formation;
         bool TriggerJustRespawned;
+
+        Spell const* _focusSpell;   ///> Locks the target during spell cast for proper facing
 };
 
 class AssistDelayEvent : public BasicEvent

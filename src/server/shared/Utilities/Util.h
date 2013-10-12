@@ -20,6 +20,7 @@
 #define _UTIL_H
 
 #include "Define.h"
+#include "Errors.h"
 
 #include <algorithm>
 #include <string>
@@ -242,7 +243,7 @@ inline bool isNumericOrSpace(wchar_t wchar)
     return isNumeric(wchar) || wchar == L' ';
 }
 
-inline bool isBasicLatinString(std::wstring wstr, bool numericOrSpace)
+inline bool isBasicLatinString(const std::wstring &wstr, bool numericOrSpace)
 {
     for (size_t i = 0; i < wstr.size(); ++i)
         if (!isBasicLatinCharacter(wstr[i]) && (!numericOrSpace || !isNumericOrSpace(wstr[i])))
@@ -250,7 +251,7 @@ inline bool isBasicLatinString(std::wstring wstr, bool numericOrSpace)
     return true;
 }
 
-inline bool isExtendedLatinString(std::wstring wstr, bool numericOrSpace)
+inline bool isExtendedLatinString(const std::wstring &wstr, bool numericOrSpace)
 {
     for (size_t i = 0; i < wstr.size(); ++i)
         if (!isExtendedLatinCharacter(wstr[i]) && (!numericOrSpace || !isNumericOrSpace(wstr[i])))
@@ -258,7 +259,7 @@ inline bool isExtendedLatinString(std::wstring wstr, bool numericOrSpace)
     return true;
 }
 
-inline bool isCyrillicString(std::wstring wstr, bool numericOrSpace)
+inline bool isCyrillicString(const std::wstring &wstr, bool numericOrSpace)
 {
     for (size_t i = 0; i < wstr.size(); ++i)
         if (!isCyrillicCharacter(wstr[i]) && (!numericOrSpace || !isNumericOrSpace(wstr[i])))
@@ -266,7 +267,7 @@ inline bool isCyrillicString(std::wstring wstr, bool numericOrSpace)
     return true;
 }
 
-inline bool isEastAsianString(std::wstring wstr, bool numericOrSpace)
+inline bool isEastAsianString(const std::wstring &wstr, bool numericOrSpace)
 {
     for (size_t i = 0; i < wstr.size(); ++i)
         if (!isEastAsianCharacter(wstr[i]) && (!numericOrSpace || !isNumericOrSpace(wstr[i])))
@@ -531,5 +532,37 @@ public:
         return part[el];
     }
 };
+
+enum ComparisionType
+{
+    COMP_TYPE_EQ = 0,
+    COMP_TYPE_HIGH,
+    COMP_TYPE_LOW,
+    COMP_TYPE_HIGH_EQ,
+    COMP_TYPE_LOW_EQ,
+    COMP_TYPE_MAX
+};
+
+template <class T>
+bool CompareValues(ComparisionType type, T val1, T val2)
+{
+    switch (type)
+    {
+        case COMP_TYPE_EQ:
+            return val1 == val2;
+        case COMP_TYPE_HIGH:
+            return val1 > val2;
+        case COMP_TYPE_LOW:
+            return val1 < val2;
+        case COMP_TYPE_HIGH_EQ:
+            return val1 >= val2;
+        case COMP_TYPE_LOW_EQ:
+            return val1 <= val2;
+        default:
+            // incorrect parameter
+            ASSERT(false);
+            return false;
+    }
+}
 
 #endif

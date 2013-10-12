@@ -539,8 +539,11 @@ inline void KillRewarder::_RewardKillCredit(Player* player)
 {
     // 4.4. Give kill credit (player must not be in group, or he must be alive or without corpse).
     if (!_group || player->IsAlive() || !player->GetCorpse())
-        if (_victim->GetTypeId() == TYPEID_UNIT)
-            player->KilledMonster(_victim->ToCreature()->GetCreatureTemplate(), _victim->GetGUID());
+        if (Creature* target = _victim->ToCreature())
+        {
+            player->KilledMonster(target->GetCreatureTemplate(), target->GetGUID());
+            player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_KILL_CREATURE_TYPE, target->GetCreatureType(), 1, target);
+        }
 }
 
 void KillRewarder::_RewardPlayer(Player* player, bool isDungeon)
@@ -667,10 +670,9 @@ Player::Player(WorldSession* session): Unit(true)
     //m_pad = 0;
 
     // players always accept
-    if (!GetSession()->HasPermission(RBAC_PERM_CAN_FILTER_WHISPERS))
+    if (!GetSession()->HasPermission(rbac::RBAC_PERM_CAN_FILTER_WHISPERS))
         SetAcceptWhispers(true);
 
-    m_curSelection = 0;
     m_lootGuid = 0;
 
     m_comboTarget = 0;
@@ -1018,7 +1020,7 @@ bool Player::Create(uint32 guidlow, CharacterCreateInfo* createInfo)
         ? sWorld->getIntConfig(CONFIG_START_PLAYER_LEVEL)
         : sWorld->getIntConfig(CONFIG_START_HEROIC_PLAYER_LEVEL);
 
-    if (m_session->HasPermission(RBAC_PERM_USE_START_GM_LEVEL))
+    if (m_session->HasPermission(rbac::RBAC_PERM_USE_START_GM_LEVEL))
     {
         uint32 gm_level = sWorld->getIntConfig(CONFIG_START_GM_LEVEL);
         if (gm_level > start_level)
@@ -2095,7 +2097,7 @@ bool Player::TeleportTo(uint32 mapid, float x, float y, float z, float orientati
         return false;
     }
 
-    if (!GetSession()->HasPermission(RBAC_PERM_SKIP_CHECK_DISABLE_MAP) && DisableMgr::IsDisabledFor(DISABLE_TYPE_MAP, mapid, this))
+    if (!GetSession()->HasPermission(rbac::RBAC_PERM_SKIP_CHECK_DISABLE_MAP) && DisableMgr::IsDisabledFor(DISABLE_TYPE_MAP, mapid, this))
     {
         TC_LOG_ERROR(LOG_FILTER_MAPS, "Player (GUID: %u, name: %s) tried to enter a forbidden map %u", GetGUIDLow(), GetName().c_str(), mapid);
         SendTransferAborted(mapid, TRANSFER_ABORT_MAP_NOT_ALLOWED);
@@ -3153,7 +3155,7 @@ void Player::InitTalentForLevel()
         // if used more that have then reset
         if (m_usedTalentCount > talentPointsForLevel)
         {
-            if (!GetSession()->HasPermission(RBAC_PERM_SKIP_CHECK_MORE_TALENTS_THAN_ALLOWED))
+            if (!GetSession()->HasPermission(rbac::RBAC_PERM_SKIP_CHECK_MORE_TALENTS_THAN_ALLOWED))
                 resetTalents(true);
             else
                 SetFreeTalentPoints(0);
@@ -4033,7 +4035,7 @@ void Player::removeSpell(uint32 spell_id, bool disabled, bool learn_low_rank)
             itr->second->state = PLAYERSPELL_REMOVED;
     }
 
-    RemoveAurasDueToSpell(spell_id);
+    RemoveOwnedAura(spell_id, GetGUID());
 
     // remove pet auras
     for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
@@ -4718,7 +4720,7 @@ void Player::DeleteFromDB(uint64 playerguid, uint32 accountId, bool updateRealmC
 
     if (uint32 guildId = GetGuildIdFromDB(playerguid))
         if (Guild* guild = sGuildMgr->GetGuildById(guildId))
-            guild->DeleteMember(guid);
+            guild->DeleteMember(guid, false, false, true);
 
     // remove from arena teams
     LeaveAllArenaTeams(playerguid);
@@ -5714,15 +5716,10 @@ void Player::HandleBaseModValue(BaseModGroup modGroup, BaseModType modType, floa
         return;
     }
 
-    switch (modType)
-    {
-        case FLAT_MOD:
-            m_auraBaseMod[modGroup][modType] += apply ? amount : -amount;
-            break;
-        case PCT_MOD:
-            ApplyPercentModFloatVar(m_auraBaseMod[modGroup][modType], amount, apply);
-            break;
-    }
+    if (modType == FLAT_MOD)
+        m_auraBaseMod[modGroup][modType] += apply ? amount : -amount;
+    else // PCT_MOD
+        ApplyPercentModFloatVar(m_auraBaseMod[modGroup][modType], amount, apply);
 
     if (!CanModifyStats())
         return;
@@ -14931,7 +14928,7 @@ bool Player::CanCompleteQuest(uint32 quest_id)
 
         if (q_status.Status == QUEST_STATUS_INCOMPLETE)
         {
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_DELIVER))
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER))
             {
                 for (uint8 i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; i++)
                 {
@@ -14940,7 +14937,7 @@ bool Player::CanCompleteQuest(uint32 quest_id)
                 }
             }
 
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_KILL_OR_CAST | QUEST_TRINITY_FLAGS_SPEAKTO))
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_KILL | QUEST_SPECIAL_FLAGS_CAST | QUEST_SPECIAL_FLAGS_SPEAKTO))
             {
                 for (uint8 i = 0; i < QUEST_OBJECTIVES_COUNT; i++)
                 {
@@ -14952,14 +14949,14 @@ bool Player::CanCompleteQuest(uint32 quest_id)
                 }
             }
 
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_PLAYER_KILL))
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_PLAYER_KILL))
                 if (qInfo->GetPlayersSlain() != 0 && q_status.PlayerCount < qInfo->GetPlayersSlain())
                     return false;
 
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_EXPLORATION_OR_EVENT) && !q_status.Explored)
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_EXPLORATION_OR_EVENT) && !q_status.Explored)
                 return false;
 
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_TIMED) && q_status.Timer == 0)
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_TIMED) && q_status.Timer == 0)
                 return false;
 
             if (qInfo->GetRewOrReqMoney() < 0)
@@ -14986,7 +14983,7 @@ bool Player::CanCompleteRepeatableQuest(Quest const* quest)
     if (!CanTakeQuest(quest, false))
         return false;
 
-    if (quest->HasFlag(QUEST_TRINITY_FLAGS_DELIVER))
+    if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER))
         for (uint8 i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; i++)
             if (quest->RequiredItemId[i] && quest->RequiredItemCount[i] && !HasItemCount(quest->RequiredItemId[i], quest->RequiredItemCount[i]))
                 return false;
@@ -15012,7 +15009,7 @@ bool Player::CanRewardQuest(Quest const* quest, bool msg)
         return false;
 
     // prevent receive reward with quest items in bank
-    if (quest->HasFlag(QUEST_TRINITY_FLAGS_DELIVER))
+    if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER))
     {
         for (uint8 i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; i++)
         {
@@ -15089,19 +15086,19 @@ void Player::AddQuest(Quest const* quest, Object* questGiver)
     questStatusData.Status = QUEST_STATUS_INCOMPLETE;
     questStatusData.Explored = false;
 
-    if (quest->HasFlag(QUEST_TRINITY_FLAGS_DELIVER))
+    if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER))
     {
         for (uint8 i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
             questStatusData.ItemCount[i] = 0;
     }
 
-    if (quest->HasFlag(QUEST_TRINITY_FLAGS_KILL_OR_CAST | QUEST_TRINITY_FLAGS_SPEAKTO))
+    if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_KILL | QUEST_SPECIAL_FLAGS_CAST | QUEST_SPECIAL_FLAGS_SPEAKTO))
     {
         for (uint8 i = 0; i < QUEST_OBJECTIVES_COUNT; ++i)
             questStatusData.CreatureOrGOCount[i] = 0;
     }
 
-    if (quest->HasFlag(QUEST_TRINITY_FLAGS_PLAYER_KILL))
+    if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_PLAYER_KILL))
         questStatusData.PlayerCount = 0;
 
     GiveQuestSourceItem(quest);
@@ -15116,7 +15113,7 @@ void Player::AddQuest(Quest const* quest, Object* questGiver)
             GetReputationMgr().SetVisible(factionEntry);
 
     uint32 qtime = 0;
-    if (quest->HasFlag(QUEST_TRINITY_FLAGS_TIMED))
+    if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_TIMED))
     {
         uint32 limittime = quest->GetLimitTime();
 
@@ -15357,7 +15354,7 @@ void Player::FailQuest(uint32 questId)
             SetQuestSlotState(log_slot, QUEST_STATE_FAIL);
         }
 
-        if (quest->HasFlag(QUEST_TRINITY_FLAGS_TIMED))
+        if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_TIMED))
         {
             QuestStatusData& q_status = m_QuestStatus[questId];
 
@@ -15653,7 +15650,7 @@ bool Player::SatisfyQuestConditions(Quest const* qInfo, bool msg)
 
 bool Player::SatisfyQuestTimed(Quest const* qInfo, bool msg)
 {
-    if (!m_timedquests.empty() && qInfo->HasFlag(QUEST_TRINITY_FLAGS_TIMED))
+    if (!m_timedquests.empty() && qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_TIMED))
     {
         if (msg)
         {
@@ -16013,7 +16010,7 @@ uint16 Player::GetReqKillOrCastCurrentCount(uint32 quest_id, int32 entry)
 
 void Player::AdjustQuestReqItemCount(Quest const* quest, QuestStatusData& questStatusData)
 {
-    if (quest->HasFlag(QUEST_TRINITY_FLAGS_DELIVER))
+    if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER))
     {
         for (uint8 i = 0; i < QUEST_ITEM_OBJECTIVES_COUNT; ++i)
         {
@@ -16154,7 +16151,7 @@ void Player::ItemAddedQuestCheck(uint32 entry, uint32 count)
             continue;
 
         Quest const* qInfo = sObjectMgr->GetQuestTemplate(questid);
-        if (!qInfo || !qInfo->HasFlag(QUEST_TRINITY_FLAGS_DELIVER))
+        if (!qInfo || !qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER))
             continue;
 
         for (uint8 j = 0; j < QUEST_ITEM_OBJECTIVES_COUNT; ++j)
@@ -16192,7 +16189,7 @@ void Player::ItemRemovedQuestCheck(uint32 entry, uint32 count)
         Quest const* qInfo = sObjectMgr->GetQuestTemplate(questid);
         if (!qInfo)
             continue;
-        if (!qInfo->HasFlag(QUEST_TRINITY_FLAGS_DELIVER))
+        if (!qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER))
             continue;
 
         for (uint8 j = 0; j < QUEST_ITEM_OBJECTIVES_COUNT; ++j)
@@ -16264,16 +16261,12 @@ void Player::KilledMonsterCredit(uint32 entry, uint64 guid /*= 0*/)
         QuestStatusData& q_status = m_QuestStatus[questid];
         if (q_status.Status == QUEST_STATUS_INCOMPLETE && (!GetGroup() || !GetGroup()->isRaidGroup() || qInfo->IsAllowedInRaid(GetMap()->GetDifficulty())))
         {
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_KILL_OR_CAST))
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_KILL) /*&& !qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_CAST)*/)
             {
                 for (uint8 j = 0; j < QUEST_OBJECTIVES_COUNT; ++j)
                 {
                     // skip GO activate objective or none
                     if (qInfo->RequiredNpcOrGo[j] <= 0)
-                        continue;
-
-                    // skip Cast at creature objective
-                    if (qInfo->RequiredSpellCast[j] != 0)
                         continue;
 
                     uint32 reqkill = qInfo->RequiredNpcOrGo[j];
@@ -16319,7 +16312,7 @@ void Player::KilledPlayerCredit()
         QuestStatusData& q_status = m_QuestStatus[questid];
         if (q_status.Status == QUEST_STATUS_INCOMPLETE && (!GetGroup() || !GetGroup()->isRaidGroup() || qInfo->IsAllowedInRaid(GetMap()->GetDifficulty())))
         {
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_PLAYER_KILL))
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_PLAYER_KILL))
             {
                 uint32 reqkill = qInfo->GetPlayersSlain();
                 uint16 curkill = q_status.PlayerCount;
@@ -16342,10 +16335,8 @@ void Player::KilledPlayerCredit()
     }
 }
 
-void Player::CastedCreatureOrGO(uint32 entry, uint64 guid, uint32 spell_id)
+void Player::KillCreditGO(uint32 entry, uint64 guid)
 {
-    bool isCreature = IS_CRE_OR_VEH_GUID(guid);
-
     uint16 addCastCount = 1;
     for (uint8 i = 0; i < MAX_QUEST_LOG_SIZE; ++i)
     {
@@ -16361,45 +16352,16 @@ void Player::CastedCreatureOrGO(uint32 entry, uint64 guid, uint32 spell_id)
 
         if (q_status.Status == QUEST_STATUS_INCOMPLETE)
         {
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_KILL_OR_CAST))
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_CAST) /*&& !qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_KILL)*/)
             {
                 for (uint8 j = 0; j < QUEST_OBJECTIVES_COUNT; ++j)
                 {
-                    // skip kill creature objective (0) or wrong spell casts
-                    if (qInfo->RequiredSpellCast[j] != spell_id)
-                        continue;
-
                     uint32 reqTarget = 0;
 
-                    if (isCreature)
-                    {
-                        // creature activate objectives
-                        if (qInfo->RequiredNpcOrGo[j] > 0)
-                        {
-                            // checked at quest_template loading
-                            reqTarget = qInfo->RequiredNpcOrGo[j];
-                            if (reqTarget != entry) // if entry doesn't match, check for killcredits referenced in template
-                            {
-                                CreatureTemplate const* cinfo = sObjectMgr->GetCreatureTemplate(entry);
-                                if (!cinfo)
-                                {
-                                    TC_LOG_ERROR(LOG_FILTER_PLAYER, "Player::CastedCreatureOrGO: GetCreatureTemplate failed for entry %u. Skipping.", entry);
-                                    continue;
-                                }
-
-                                for (uint8 k = 0; k < MAX_KILL_CREDIT; ++k)
-                                    if (cinfo->KillCredit[k] == reqTarget)
-                                        entry = cinfo->KillCredit[k];
-                            }
-                         }
-                    }
-                    else
-                    {
-                        // GO activate objective
-                        if (qInfo->RequiredNpcOrGo[j] < 0)
-                            // checked at quest_template loading
-                            reqTarget = - qInfo->RequiredNpcOrGo[j];
-                    }
+                    // GO activate objective
+                    if (qInfo->RequiredNpcOrGo[j] < 0)
+                        // checked at quest_template loading
+                        reqTarget = - qInfo->RequiredNpcOrGo[j];
 
                     // other not this creature/GO related objectives
                     if (reqTarget != entry)
@@ -16444,12 +16406,12 @@ void Player::TalkedToCreature(uint32 entry, uint64 guid)
 
         if (q_status.Status == QUEST_STATUS_INCOMPLETE)
         {
-            if (qInfo->HasFlag(QUEST_TRINITY_FLAGS_KILL_OR_CAST | QUEST_TRINITY_FLAGS_SPEAKTO))
+            if (qInfo->HasSpecialFlag(QUEST_SPECIAL_FLAGS_KILL | QUEST_SPECIAL_FLAGS_CAST | QUEST_SPECIAL_FLAGS_SPEAKTO))
             {
                 for (uint8 j = 0; j < QUEST_OBJECTIVES_COUNT; ++j)
                 {
-                                                            // skip spell casts and Gameobject objectives
-                    if (qInfo->RequiredSpellCast[j] > 0 || qInfo->RequiredNpcOrGo[j] < 0)
+                    // skip gameobject objectives
+                    if (qInfo->RequiredNpcOrGo[j] < 0)
                         continue;
 
                     uint32 reqTarget = 0;
@@ -17016,7 +16978,7 @@ bool Player::LoadFromDB(uint32 guid, SQLQueryHolder *holder)
 
     // check name limitations
     if (ObjectMgr::CheckPlayerName(m_name) != CHAR_NAME_SUCCESS ||
-        (!GetSession()->HasPermission(RBAC_PERM_SKIP_CHECK_CHARACTER_CREATION_RESERVEDNAME) &&
+        (!GetSession()->HasPermission(rbac::RBAC_PERM_SKIP_CHECK_CHARACTER_CREATION_RESERVEDNAME) &&
          sObjectMgr->IsReservedName(m_name)))
     {
         PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
@@ -17551,7 +17513,7 @@ bool Player::LoadFromDB(uint32 guid, SQLQueryHolder *holder)
     outDebugValues();
 
     // GM state
-    if (GetSession()->HasPermission(RBAC_PERM_RESTORE_SAVED_GM_STATE))
+    if (GetSession()->HasPermission(rbac::RBAC_PERM_RESTORE_SAVED_GM_STATE))
     {
         switch (sWorld->getIntConfig(CONFIG_GM_LOGIN_STATE))
         {
@@ -18233,7 +18195,7 @@ void Player::_LoadQuestStatus(PreparedQueryResult result)
 
                 time_t quest_time = time_t(fields[3].GetUInt32());
 
-                if (quest->HasFlag(QUEST_TRINITY_FLAGS_TIMED) && !GetQuestRewardStatus(quest_id))
+                if (quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_TIMED) && !GetQuestRewardStatus(quest_id))
                 {
                     AddTimedQuest(quest_id);
 
@@ -19885,7 +19847,7 @@ void Player::outDebugValues() const
 void Player::UpdateSpeakTime()
 {
     // ignore chat spam protection for GMs in any mode
-    if (GetSession()->HasPermission(RBAC_PERM_SKIP_CHECK_CHAT_SPAM))
+    if (GetSession()->HasPermission(rbac::RBAC_PERM_SKIP_CHECK_CHAT_SPAM))
         return;
 
     time_t current = time (NULL);
@@ -20341,7 +20303,7 @@ void Player::TextEmote(const std::string& text)
 
     WorldPacket data(SMSG_MESSAGECHAT, 200);
     BuildPlayerChat(&data, CHAT_MSG_EMOTE, _text, LANG_UNIVERSAL);
-    SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_TEXTEMOTE), true, !GetSession()->HasPermission(RBAC_PERM_TWO_SIDE_INTERACTION_CHAT));
+    SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_TEXTEMOTE), true, !GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHAT));
 }
 
 void Player::Whisper(const std::string& text, uint32 language, uint64 receiver)
@@ -20497,7 +20459,7 @@ void Player::PossessSpellInitialize()
 
     if (!charmInfo)
     {
-        TC_LOG_ERROR(LOG_FILTER_PLAYER, "Player::PossessSpellInitialize(): charm ("UI64FMTD") has no charminfo!", charm->GetGUID());
+        TC_LOG_ERROR(LOG_FILTER_PLAYER, "Player::PossessSpellInitialize(): charm (" UI64FMTD ") has no charminfo!", charm->GetGUID());
         return;
     }
 
@@ -20609,7 +20571,7 @@ void Player::CharmSpellInitialize()
     CharmInfo* charmInfo = charm->GetCharmInfo();
     if (!charmInfo)
     {
-        TC_LOG_ERROR(LOG_FILTER_PLAYER, "Player::CharmSpellInitialize(): the player's charm ("UI64FMTD") has no charminfo!", charm->GetGUID());
+        TC_LOG_ERROR(LOG_FILTER_PLAYER, "Player::CharmSpellInitialize(): the player's charm (" UI64FMTD ") has no charminfo!", charm->GetGUID());
         return;
     }
 
@@ -22081,13 +22043,13 @@ bool Player::CanJoinToBattleground(Battleground const* bg) const
     if (HasAura(26013))
         return false;
 
-    if (bg->isArena() && !GetSession()->HasPermission(RBAC_PERM_JOIN_ARENAS))
+    if (bg->isArena() && !GetSession()->HasPermission(rbac::RBAC_PERM_JOIN_ARENAS))
         return false;
 
-    if (bg->IsRandom() && !GetSession()->HasPermission(RBAC_PERM_JOIN_RANDOM_BG))
+    if (bg->IsRandom() && !GetSession()->HasPermission(rbac::RBAC_PERM_JOIN_RANDOM_BG))
         return false;
 
-    if (!GetSession()->HasPermission(RBAC_PERM_JOIN_NORMAL_BG))
+    if (!GetSession()->HasPermission(rbac::RBAC_PERM_JOIN_NORMAL_BG))
         return false;
 
     return true;
@@ -22439,15 +22401,15 @@ bool Player::IsQuestRewarded(uint32 quest_id) const
 
 Unit* Player::GetSelectedUnit() const
 {
-    if (m_curSelection)
-        return ObjectAccessor::GetUnit(*this, m_curSelection);
+    if (uint64 selectionGUID = GetUInt64Value(UNIT_FIELD_TARGET))
+        return ObjectAccessor::GetUnit(*this, selectionGUID);
     return NULL;
 }
 
 Player* Player::GetSelectedPlayer() const
 {
-    if (m_curSelection)
-        return ObjectAccessor::GetPlayer(*this, m_curSelection);
+    if (uint64 selectionGUID = GetUInt64Value(UNIT_FIELD_TARGET))
+        return ObjectAccessor::GetPlayer(*this, selectionGUID);
     return NULL;
 }
 
@@ -25458,7 +25420,7 @@ void Player::SetEquipmentSet(uint32 index, EquipmentSet eqset)
 
         if (!found)                                          // something wrong...
         {
-            TC_LOG_ERROR(LOG_FILTER_PLAYER, "Player %s tried to save equipment set "UI64FMTD" (index %u), but that equipment set not found!", GetName().c_str(), eqset.Guid, index);
+            TC_LOG_ERROR(LOG_FILTER_PLAYER, "Player %s tried to save equipment set " UI64FMTD " (index %u), but that equipment set not found!", GetName().c_str(), eqset.Guid, index);
             return;
         }
     }

@@ -643,7 +643,7 @@ void Spell::InitExplicitTargets(SpellCastTargets const& targets)
             if (Player* playerCaster = m_caster->ToPlayer())
             {
                 // selection has to be found and to be valid target for the spell
-                if (Unit* selectedUnit = ObjectAccessor::GetUnit(*m_caster, playerCaster->GetSelection()))
+                if (Unit* selectedUnit = ObjectAccessor::GetUnit(*m_caster, playerCaster->GetTarget()))
                     if (m_spellInfo->CheckExplicitTarget(m_caster, selectedUnit) == SPELL_CAST_OK)
                         unit = selectedUnit;
             }
@@ -1777,9 +1777,9 @@ void Spell::SelectEffectTypeImplicitTargets(uint8 effIndex)
     {
         case SPELL_EFFECT_SUMMON_RAF_FRIEND:
         case SPELL_EFFECT_SUMMON_PLAYER:
-            if (m_caster->GetTypeId() == TYPEID_PLAYER && m_caster->ToPlayer()->GetSelection())
+            if (m_caster->GetTypeId() == TYPEID_PLAYER && m_caster->GetTarget())
             {
-                WorldObject* target = ObjectAccessor::FindPlayer(m_caster->ToPlayer()->GetSelection());
+                WorldObject* target = ObjectAccessor::FindPlayer(m_caster->GetTarget());
 
                 CallScriptObjectTargetSelectHandlers(target, SpellEffIndex(effIndex));
 
@@ -2569,16 +2569,8 @@ void Spell::DoAllEffectOnTarget(TargetInfo* target)
     {
         //AI functions
         if (spellHitTarget->GetTypeId() == TYPEID_UNIT)
-        {
             if (spellHitTarget->ToCreature()->IsAIEnabled)
                 spellHitTarget->ToCreature()->AI()->SpellHit(m_caster, m_spellInfo);
-
-            // cast at creature (or GO) quest objectives update at successful cast finished (+channel finished)
-            // ignore pets or autorepeat/melee casts for speed (not exist quest for spells (hm...)
-            if (m_originalCaster && m_originalCaster->IsControlledByPlayer() && !spellHitTarget->ToCreature()->IsPet() && !IsAutoRepeat() && !IsNextMeleeSwingSpell() && !IsChannelActive())
-                if (Player* p = m_originalCaster->GetCharmerOrOwnerPlayerOrPlayerItself())
-                    p->CastedCreatureOrGO(spellHitTarget->GetEntry(), spellHitTarget->GetGUID(), m_spellInfo->Id);
-        }
 
         if (m_caster->GetTypeId() == TYPEID_UNIT && m_caster->ToCreature()->IsAIEnabled)
             m_caster->ToCreature()->AI()->SpellHitTarget(spellHitTarget, m_spellInfo);
@@ -2882,12 +2874,6 @@ void Spell::DoAllEffectOnTarget(GOTargetInfo* target)
             HandleEffects(NULL, NULL, go, effectNumber, SPELL_EFFECT_HANDLE_HIT_TARGET);
 
     CallScriptOnHitHandlers();
-
-    // cast at creature (or GO) quest objectives update at successful cast finished (+channel finished)
-    // ignore autorepeat/melee casts for speed (not exist quest for spells (hm...)
-    if (m_originalCaster && m_originalCaster->IsControlledByPlayer() && !IsAutoRepeat() && !IsNextMeleeSwingSpell() && !IsChannelActive())
-        if (Player* p = m_originalCaster->GetCharmerOrOwnerPlayerOrPlayerItself())
-            p->CastedCreatureOrGO(go->GetEntry(), go->GetGUID(), m_spellInfo->Id);
     CallScriptAfterHitHandlers();
 }
 
@@ -3109,7 +3095,7 @@ void Spell::prepare(SpellCastTargets const* targets, AuraEffect const* triggered
         // set target for proper facing
         if ((m_casttime || m_spellInfo->IsChanneled()) && !(_triggeredCastFlags & TRIGGERED_IGNORE_SET_FACING))
             if (m_caster->GetTypeId() == TYPEID_UNIT && m_targets.GetObjectTarget() && m_caster != m_targets.GetObjectTarget())
-                m_caster->FocusTarget(this, m_targets.GetObjectTarget());
+                m_caster->ToCreature()->FocusTarget(this, m_targets.GetObjectTarget());
 
         if (!(_triggeredCastFlags & TRIGGERED_IGNORE_GCD))
             TriggerGlobalCooldown();
@@ -3641,40 +3627,6 @@ void Spell::update(uint32 difftime)
             if (m_timer == 0)
             {
                 SendChannelUpdate(0);
-
-                // channeled spell processed independently for quest targeting
-                // cast at creature (or GO) quest objectives update at successful cast channel finished
-                // ignore autorepeat/melee casts for speed (not exist quest for spells (hm...)
-                if (!IsAutoRepeat() && !IsNextMeleeSwingSpell())
-                {
-                    if (Player* p = m_caster->GetCharmerOrOwnerPlayerOrPlayerItself())
-                    {
-                        for (std::list<TargetInfo>::iterator ihit = m_UniqueTargetInfo.begin(); ihit != m_UniqueTargetInfo.end(); ++ihit)
-                        {
-                            TargetInfo* target = &*ihit;
-                            if (!IS_CRE_OR_VEH_GUID(target->targetGUID))
-                                continue;
-
-                            Unit* unit = m_caster->GetGUID() == target->targetGUID ? m_caster : ObjectAccessor::GetUnit(*m_caster, target->targetGUID);
-                            if (unit == NULL)
-                                continue;
-
-                            p->CastedCreatureOrGO(unit->GetEntry(), unit->GetGUID(), m_spellInfo->Id);
-                        }
-
-                        for (std::list<GOTargetInfo>::iterator ihit = m_UniqueGOTargetInfo.begin(); ihit != m_UniqueGOTargetInfo.end(); ++ihit)
-                        {
-                            GOTargetInfo* target = &*ihit;
-
-                            GameObject* go = m_caster->GetMap()->GetGameObject(target->targetGUID);
-                            if (!go)
-                                continue;
-
-                            p->CastedCreatureOrGO(go->GetEntry(), go->GetGUID(), m_spellInfo->Id);
-                        }
-                    }
-                }
-
                 finish();
             }
             break;
@@ -3709,8 +3661,8 @@ void Spell::finish(bool ok)
                 ((Puppet*)charm)->UnSummon();
     }
 
-    if (m_caster->GetTypeId() == TYPEID_UNIT)
-        m_caster->ReleaseFocus(this);
+    if (Creature* creatureCaster = m_caster->ToCreature())
+        creatureCaster->ReleaseFocus(this);
 
     if (!ok)
         return;
@@ -5371,10 +5323,10 @@ SpellCastResult Spell::CheckCast(bool strict)
             {
                 if (m_caster->GetTypeId() != TYPEID_PLAYER)
                     return SPELL_FAILED_BAD_TARGETS;
-                if (!m_caster->ToPlayer()->GetSelection())
+                if (!m_caster->GetTarget())
                     return SPELL_FAILED_BAD_TARGETS;
 
-                Player* target = ObjectAccessor::FindPlayer(m_caster->ToPlayer()->GetSelection());
+                Player* target = ObjectAccessor::FindPlayer(m_caster->ToPlayer()->GetTarget());
                 if (!target || m_caster->ToPlayer() == target || (!target->IsInSameRaidWith(m_caster->ToPlayer()) && m_spellInfo->Id != 48955)) // refer-a-friend spell
                     return SPELL_FAILED_BAD_TARGETS;
 
@@ -5406,10 +5358,10 @@ SpellCastResult Spell::CheckCast(bool strict)
 
                 Player* playerCaster = m_caster->ToPlayer();
                     //
-                if (!(playerCaster->GetSelection()))
+                if (!(playerCaster->GetTarget()))
                     return SPELL_FAILED_BAD_TARGETS;
 
-                Player* target = ObjectAccessor::FindPlayer(playerCaster->GetSelection());
+                Player* target = playerCaster->GetSelectedPlayer();
 
                 if (!target ||
                     !(target->GetSession()->GetRecruiterId() == playerCaster->GetSession()->GetAccountId() || target->GetSession()->GetAccountId() == playerCaster->GetSession()->GetRecruiterId()))

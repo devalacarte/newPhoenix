@@ -206,7 +206,7 @@ void SmartAI::EndPath(bool fail)
     mLastWP = NULL;
 
     if (mCanRepeatPath)
-        StartPath(mRun, GetScript()->GetPathId(), mCanRepeatPath);
+        StartPath(mRun, GetScript()->GetPathId(), true);
     else
         GetScript()->SetPathId(0);
 
@@ -312,7 +312,7 @@ void SmartAI::UpdatePath(const uint32 diff)
             mWPReached = false;
         }
     }
-    if (me->IsInCombat() || HasEscortState(SMART_ESCORT_PAUSED | SMART_ESCORT_RETURNING))
+    if ((!me->HasReactState(REACT_PASSIVE) && me->IsInCombat()) || HasEscortState(SMART_ESCORT_PAUSED | SMART_ESCORT_RETURNING))
         return;
     // handle next wp
     if (mWPReached)//reached WP
@@ -699,6 +699,10 @@ void SmartAI::InitializeAI()
 void SmartAI::OnCharmed(bool apply)
 {
     GetScript()->ProcessEventsFor(SMART_EVENT_CHARMED, NULL, 0, 0, apply);
+
+    if (!apply && !me->IsInEvadeMode() && me->GetUInt64Value(UNIT_FIELD_CHARMEDBY))
+        if (Unit* charmer = ObjectAccessor::GetUnit(*me, me->GetUInt64Value(UNIT_FIELD_CHARMEDBY)))
+            AttackStart(charmer);
 }
 
 void SmartAI::DoAction(int32 param)

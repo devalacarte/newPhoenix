@@ -1257,7 +1257,7 @@ void GameObject::Use(Unit* user)
                 if (Battleground* bg = player->GetBattleground())
                     bg->EventPlayerUsedGO(player, this);
 
-                player->CastedCreatureOrGO(info->entry, GetGUID(), 0);
+                player->KillCreditGO(info->entry, GetGUID());
             }
 
             if (uint32 trapEntry = info->goober.linkedTrapId)
@@ -1508,7 +1508,7 @@ void GameObject::Use(Unit* user)
 
             Player* player = user->ToPlayer();
 
-            Player* targetPlayer = ObjectAccessor::FindPlayer(player->GetSelection());
+            Player* targetPlayer = ObjectAccessor::FindPlayer(player->GetTarget());
 
             // accept only use by player from same raid as caster, except caster itself
             if (!targetPlayer || targetPlayer == player || !targetPlayer->IsInSameRaidWith(player))

@@ -94,7 +94,7 @@ enum SMART_EVENT
     SMART_EVENT_OOC_LOS                  = 10,      // NoHostile, MaxRnage, CooldownMin, CooldownMax
     SMART_EVENT_RESPAWN                  = 11,      // type, MapId, ZoneId
     SMART_EVENT_TARGET_HEALTH_PCT        = 12,      // HPMin%, HPMax%, RepeatMin, RepeatMax
-    SMART_EVENT_TARGET_CASTING           = 13,      // RepeatMin, RepeatMax
+    SMART_EVENT_TARGET_CASTING           = 13,      // RepeatMin, RepeatMax, spellid
     SMART_EVENT_FRIENDLY_HEALTH          = 14,      // HPDeficit, Radius, RepeatMin, RepeatMax
     SMART_EVENT_FRIENDLY_IS_CC           = 15,      // Radius, RepeatMin, RepeatMax
     SMART_EVENT_FRIENDLY_MISSING_BUFF    = 16,      // SpellId, Radius, RepeatMin, RepeatMax
@@ -215,11 +215,18 @@ struct SmartEvent
 
         struct
         {
+            uint32 repeatMin;
+            uint32 repeatMax;
+            uint32 spellId;
+        } targetCasting;
+
+        struct
+        {
             uint32 hpDeficit;
             uint32 radius;
             uint32 repeatMin;
             uint32 repeatMax;
-        } friendlyHealt;
+        } friendlyHealth;
 
         struct
         {
@@ -368,7 +375,7 @@ struct SmartEvent
             uint32 maxHpPct;
             uint32 repeatMin;
             uint32 repeatMax;
-        } friendlyHealtPct;
+        } friendlyHealthPct;
 
         struct
         {
@@ -402,7 +409,7 @@ enum SMART_ACTION
     SMART_ACTION_ACTIVATE_GOBJECT                   = 9,      //
     SMART_ACTION_RANDOM_EMOTE                       = 10,     // EmoteId1, EmoteId2, EmoteId3...
     SMART_ACTION_CAST                               = 11,     // SpellId, CastFlags
-    SMART_ACTION_SUMMON_CREATURE                    = 12,     // CreatureID, summonType, duration in ms, storageID, attackInvoker,
+    SMART_ACTION_SUMMON_CREATURE                    = 12,     // CreatureID, summonType, duration in ms, attackInvoker
     SMART_ACTION_THREAT_SINGLE_PCT                  = 13,     // Threat%
     SMART_ACTION_THREAT_ALL_PCT                     = 14,     // Threat%
     SMART_ACTION_CALL_AREAEXPLOREDOREVENTHAPPENS    = 15,     // QuestID
@@ -417,7 +424,7 @@ enum SMART_ACTION
     SMART_ACTION_EVADE                              = 24,     // No Params
     SMART_ACTION_FLEE_FOR_ASSIST                    = 25,     // With Emote
     SMART_ACTION_CALL_GROUPEVENTHAPPENS             = 26,     // QuestID
-    SMART_ACTION_CALL_CASTEDCREATUREORGO            = 27,     // CreatureId, SpellId
+    // none                                         = 27,
     SMART_ACTION_REMOVEAURASFROMSPELL               = 28,     // Spellid, 0 removes all auras
     SMART_ACTION_FOLLOW                             = 29,     // Distance (0 = default), Angle (0 = default), EndCreatureEntry, credit, creditType (0monsterkill, 1event)
     SMART_ACTION_RANDOM_PHASE                       = 30,     // PhaseId1, PhaseId2, PhaseId3...
@@ -501,8 +508,10 @@ enum SMART_ACTION
     SMART_ACTION_SET_POWER                          = 108,    // PowerType, newPower
     SMART_ACTION_ADD_POWER                          = 109,    // PowerType, newPower
     SMART_ACTION_REMOVE_POWER                       = 110,    // PowerType, newPower
+    SMART_ACTION_GAME_EVENT_STOP                    = 111,    // GameEventId
+    SMART_ACTION_GAME_EVENT_START                   = 112,    // GameEventId
 
-    SMART_ACTION_END                                = 111
+    SMART_ACTION_END                                = 113
 };
 
 struct SmartAction
@@ -574,7 +583,6 @@ struct SmartAction
             uint32 creature;
             uint32 type;
             uint32 duration;
-            uint32 storageID;
             uint32 attackInvoker;
         } summonCreature;
 
@@ -624,12 +632,6 @@ struct SmartAction
             uint32 inc;
             uint32 dec;
         } incEventPhase;
-
-        struct
-        {
-            uint32 creature;
-            uint32 spell;
-        } callCastedCreatureOrGO;
 
         struct
         {
@@ -956,6 +958,16 @@ struct SmartAction
             uint32 newPower;
         } power;
 
+        struct
+        {
+            uint32 id;
+        } gameEventStop;
+
+        struct
+        {
+            uint32 id;
+        } gameEventStart;
+
         //! Note for any new future actions
         //! All parameters must have type uint32
 
@@ -1009,8 +1021,8 @@ enum SMARTAI_TARGETS
     SMART_TARGET_ACTION_INVOKER_VEHICLE         = 22,   // Unit's vehicle who caused this Event to occur
     SMART_TARGET_OWNER_OR_SUMMONER              = 23,   // Unit's owner or summoner
     SMART_TARGET_THREAT_LIST                    = 24,   // All units on creature's threat list
-    SMART_TARGET_CLOSEST_ENEMY                  = 25,   // maxDist
-    SMART_TARGET_CLOSEST_FRIENDLY               = 26,   // maxDist
+    SMART_TARGET_CLOSEST_ENEMY                  = 25,   // maxDist, playerOnly
+    SMART_TARGET_CLOSEST_FRIENDLY               = 26,   // maxDist, playerOnly
 
     SMART_TARGET_END                            = 27
 };
@@ -1097,11 +1109,13 @@ struct SmartTarget
         struct
         {
             uint32 maxDist;
+            uint32 playerOnly;
         } closestAttackable;
 
         struct
         {
             uint32 maxDist;
+            uint32 playerOnly;
         } closestFriendly;
 
         struct
@@ -1275,7 +1289,7 @@ enum SmartCastFlags
 struct SmartScriptHolder
 {
     SmartScriptHolder() : entryOrGuid(0), source_type(SMART_SCRIPT_TYPE_CREATURE)
-        , event_id(0), link(0), timer(0), active(false), runOnce(false)
+        , event_id(0), link(0), event(), action(), target(), timer(0), active(false), runOnce(false)
         , enableTimed(false) {}
 
     int32 entryOrGuid;

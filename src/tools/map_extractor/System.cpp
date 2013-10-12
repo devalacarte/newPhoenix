@@ -89,11 +89,17 @@ static const char* const langs[] = {"enGB", "enUS", "deDE", "esES", "frFR", "koK
 
 void CreateDir( const std::string& Path )
 {
+    int ret;
     #ifdef _WIN32
-    _mkdir( Path.c_str());
+    ret = _mkdir( Path.c_str());
     #else
-    mkdir( Path.c_str(), 0777 );
+    ret = mkdir( Path.c_str(), 0777 );
     #endif
+    if (ret != 0)
+    {
+        printf("Fatal Error: Could not create directory %s check your permissions", Path.c_str());
+        exit(1);
+    }
 }
 
 bool FileExists( const char* FileName )
@@ -180,7 +186,7 @@ uint32 ReadBuild(int locale)
         exit(1);
     }
 
-    std::string text = m.getPointer();
+    std::string text = std::string(m.getPointer(), m.getSize());
     m.close();
 
     size_t pos = text.find("version=\"");

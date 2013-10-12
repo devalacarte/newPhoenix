@@ -1416,7 +1416,7 @@ class Player : public Unit, public GridObject<Player>
         void KilledMonster(CreatureTemplate const* cInfo, uint64 guid);
         void KilledMonsterCredit(uint32 entry, uint64 guid = 0);
         void KilledPlayerCredit();
-        void CastedCreatureOrGO(uint32 entry, uint64 guid, uint32 spell_id);
+        void KillCreditGO(uint32 entry, uint64 guid = 0);
         void TalkedToCreature(uint32 entry, uint64 guid);
         void MoneyChanged(uint32 value);
         void ReputationChanged(FactionEntry const* factionEntry);
@@ -1506,10 +1506,11 @@ class Player : public Unit, public GridObject<Player>
         size_t GetRewardedQuestCount() const { return m_RewardedQuests.size(); }
         bool IsQuestRewarded(uint32 quest_id) const;
 
-        uint64 GetSelection() const { return m_curSelection; }
         Unit* GetSelectedUnit() const;
         Player* GetSelectedPlayer() const;
-        void SetSelection(uint64 guid) { m_curSelection = guid; SetUInt64Value(UNIT_FIELD_TARGET, guid); }
+
+        void SetTarget(uint64 /*guid*/) OVERRIDE { } /// Used for serverside target changes, does not apply to players
+        void SetSelection(uint64 guid) { SetUInt64Value(UNIT_FIELD_TARGET, guid); }
 
         uint8 GetComboPoints() const { return m_comboPoints; }
         uint64 GetComboTarget() const { return m_comboTarget; }
@@ -2424,7 +2425,6 @@ class Player : public Unit, public GridObject<Player>
         bool m_itemUpdateQueueBlocked;
 
         uint32 m_ExtraFlags;
-        uint64 m_curSelection;
 
         uint64 m_comboTarget;
         int8 m_comboPoints;
