@@ -1,4 +1,6 @@
 #include "ScriptMgr.h"
+#include "MapManager.h"
+#include "World.h"
 
 enum Spells_valkyr{
 	SPELL_ONE                                   = 62443
@@ -9,12 +11,22 @@ enum Spells_valkyr{
 #define ARENAIOU				600011
 #define NANITEBATTLEFIELD		26045
 #define NANITEGLADIATOR			26044
+
+
+//randomspawn script
+int ammountofports = 2;
+int const arrportsize = 2;
+float arrPorts [arrportsize][5] = {
+	{1.0f,8069.559570f,-3860.994385f,762.219299f,1.675395f},
+	{1.0f,-2593.395020f,-4780.295410f,3.208325f,1.903161f}
+};
+
+
+
 // vipscripts
 #define ITEM_VIP_TOKEN		    600005
 // votescripts
 #define ITEM_VOTE_TOKEN			600006
-
-
 
 
 class celticscript_valkyr : public CreatureScript{
@@ -202,6 +214,113 @@ public:
 
 
 
+
+/*
+//////////////////////////////////////////
+/////////////// RANDOM SPAWNS ////////////////
+//////////////////////////////////////////
+*/
+
+class celticscript_random_spawn : public CreatureScript
+{
+    public:
+
+        celticscript_random_spawn()
+            : CreatureScript("celticscript_random_spawn")
+        {
+        }
+
+        struct celticscript_random_spawnAI : public ScriptedAI
+        {
+            // *** HANDLED FUNCTION ***
+            //This is the constructor, called only once when the Creature is first created
+            celticscript_random_spawnAI(Creature* creature) : ScriptedAI(creature) {}
+
+			uint32	m_uiTeleportTimerTest;
+			uint32	m_uiTeleportTimerReal;
+			uint32 m_uiFirstTeleportTimer;
+			uint32	m_uiSayTimer;
+			uint32	m_randomnum;
+			uint32	m_oldport;
+			uint32	m_phase;
+
+			void Reset() OVERRIDE
+			{
+				m_uiTeleportTimerReal = 21600000; //6hours
+				m_uiSayTimer = 900000; //15 minutes (900000)
+				m_uiFirstTeleportTimer = 10000; //3minutes (180000)
+				me->RestoreFaction();
+				m_randomnum = 0;
+				m_oldport = 0;
+				m_phase = 0;
+			}
+
+
+			void UpdateAI(uint32 uiDiff) OVERRIDE
+            {
+					if (m_uiSayTimer <= uiDiff)
+                    {
+						me->MonsterYell("CAN YOU HEAR ME, CAN ANYBODY HEAR ME?!",LANG_UNIVERSAL,0);
+						m_uiSayTimer = 900000;
+					}
+                    else
+                        m_uiSayTimer -= uiDiff;
+
+					if (m_uiTeleportTimerReal <= uiDiff)
+                    {
+						m_uiTeleportTimerReal = 21600000;
+					}
+                    else
+                        m_uiTeleportTimerReal -= uiDiff;
+
+					if (m_uiFirstTeleportTimer <= uiDiff)
+                    {
+						
+						while(m_randomnum == m_oldport){
+							//randomnum = urand(0,arrportsize-1);
+							m_randomnum = rand() % arrportsize;
+						}
+
+						m_oldport = m_randomnum;
+						if(m_oldport == 0){me->MonsterSay("0",0,0);}
+						if(m_oldport == 1){me->MonsterSay("1",0,0);}
+						if(m_oldport == 2){me->MonsterSay("2",0,0);}
+						if(m_oldport == 3){me->MonsterSay("3",0,0);}
+						if(m_oldport == 4){me->MonsterSay("4",0,0);}
+						if(m_oldport == 5){me->MonsterSay("5",0,0);}
+						if(m_oldport == 6){me->MonsterSay("6",0,0);}
+						if(m_oldport == 7){me->MonsterSay("7",0,0);}
+						if(m_oldport == 8){me->MonsterSay("8",0,0);}
+						if(m_oldport == 9){me->MonsterSay("9",0,0);}
+						if(m_oldport == 10){me->MonsterSay("10",0,0);}
+						
+
+						me->MonsterSay("AU REVOIR: Off to me next location for 6 hours!",LANG_UNIVERSAL,0);
+						sWorld->SendServerMessage(SERVER_MSG_STRING, "Random Porting Guy: AU REVOIR: Off to me next location for 6 hours!");
+						Map* newMap = sMapMgr->CreateBaseMap(arrPorts[m_randomnum][0]);
+						me->FarTeleportTo(newMap,arrPorts[m_randomnum][1],arrPorts[m_randomnum][2],arrPorts[m_randomnum][3],arrPorts[m_randomnum][4]);
+						m_uiFirstTeleportTimer = 20000;		//replace to 6 hours later on
+					}
+                    else
+                        m_uiTeleportTimerTest -= uiDiff;
+					
+				}
+	};
+
+	CreatureAI* GetAI(Creature* creature) const OVERRIDE
+    {
+		 return new celticscript_random_spawnAI(creature);
+    }
+
+
+
+	int static getRandomNumberInRange(int nMin, int nMax){
+		//int range = max - min + 1;
+		//return rand() % range + min;
+		return nMin + (int)((double)rand() / (RAND_MAX+1) * (nMax-nMin+1));
+	}
+
+};
 
 
 
@@ -1377,6 +1496,7 @@ void AddSC_Custom_Misc(){
 	new celticscript_item_custom_summon();
 	new celticscript_summoned_phoenix();
 	new celticscript_valkyr();
+	new celticscript_random_spawn();
 	new npc_token_shop(); // old script (updated)
 	new npc_vote_rewards(); //old script (updated)
 }
