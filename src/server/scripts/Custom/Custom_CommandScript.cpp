@@ -16,38 +16,38 @@ public:
 	{
 		static ChatCommand headGMCommandTable[] =
 		{
-			{ "addgm",	        RBAC_PERM_COMMAND_HEADGM_ADDGM,					false, &HandleHeadAddGMCommand,				"", NULL },
+			{ "addgm",	        rbac::RBAC_PERM_COMMAND_HEADGM_ADDGM,					false, &HandleHeadAddGMCommand,				"", NULL },
 			{ NULL,             0,											false, NULL,                                "", NULL }
 		};
 
 		static ChatCommand massCommandTable[] =
 		{
-			{ "revive",			RBAC_PERM_COMMAND_CUSTOM_MASS_REVIVE,		false, &HandleMassRessurectionCommand,		"", NULL },
-			{ "unaura",			RBAC_PERM_COMMAND_CUSTOM_MASS_UNAURA,		false, &HandleMassUnauraCommand,			"", NULL },
-			{ "morph",			RBAC_PERM_COMMAND_CUSTOM_MASS_MORPH,		false, &HandleGroupMorphCommand,			"", NULL },
-			{ "demorph",		RBAC_PERM_COMMAND_CUSTOM_MASS_DEMORPH,		false, &HandleGroupDeMorphCommand,			"", NULL },
+			{ "revive",			rbac::RBAC_PERM_COMMAND_CUSTOM_MASS_REVIVE,		false, &HandleMassRessurectionCommand,		"", NULL },
+			{ "unaura",			rbac::RBAC_PERM_COMMAND_CUSTOM_MASS_UNAURA,		false, &HandleMassUnauraCommand,			"", NULL },
+			{ "morph",			rbac::RBAC_PERM_COMMAND_CUSTOM_MASS_MORPH,		false, &HandleGroupMorphCommand,			"", NULL },
+			{ "demorph",		rbac::RBAC_PERM_COMMAND_CUSTOM_MASS_DEMORPH,		false, &HandleGroupDeMorphCommand,			"", NULL },
 			{ NULL,             0,											false, NULL,                                "", NULL }
 		};
         static ChatCommand eventGMCommandTable[] =
 		{
-			{ "addtoken",		RBAC_PERM_COMMAND_EVENTGM_ADDTOKEN,			false, &HandleAddEventTokenCommand,			"", NULL },
-			{ "unaura",			RBAC_PERM_COMMAND_EVENTGM_UNAURA,			false, &HandleAddEventAuraCommand,			"", NULL },
+			{ "addtoken",		rbac::RBAC_PERM_COMMAND_EVENTGM_ADDTOKEN,			false, &HandleAddEventTokenCommand,			"", NULL },
+			{ "unaura",			rbac::RBAC_PERM_COMMAND_EVENTGM_UNAURA,			false, &HandleAddEventAuraCommand,			"", NULL },
 			{ NULL,             0,											false, NULL,                                "", NULL }
         };
 	    static ChatCommand devaSubCommandTable[] =
         {
-            { "object",         RBAC_PERM_COMMAND_CUSTOM_OBJECT,			true,  &HandleDevaObjectCommand,			"", NULL },
-			{ "patch",          RBAC_PERM_COMMAND_CUSTOM_PATCH,				true,  &HandleDevaObjectPatchCommand,		"", NULL },
-			{ "hallo",          RBAC_PERM_COMMAND_CUSTOM_HALLO,				true,  &HandleHelloWorldCommand,			"", NULL },
-			{ "mass",			RBAC_PERM_COMMAND_CUSTOM_MASS,				true, NULL,									"", massCommandTable },
+            { "object",         rbac::RBAC_PERM_COMMAND_CUSTOM_OBJECT,			true,  &HandleDevaObjectCommand,			"", NULL },
+			{ "patch",          rbac::RBAC_PERM_COMMAND_CUSTOM_PATCH,				true,  &HandleDevaObjectPatchCommand,		"", NULL },
+			{ "hallo",          rbac::RBAC_PERM_COMMAND_CUSTOM_HALLO,				true,  &HandleHelloWorldCommand,			"", NULL },
+			{ "mass",			rbac::RBAC_PERM_COMMAND_CUSTOM_MASS,				true, NULL,									"", massCommandTable },
             { NULL,             0,											false, NULL,								"", NULL }
         };
 
         static ChatCommand commandTable[] =
         {
-            { "custom",         RBAC_PERM_COMMAND_CUSTOM,					true,	NULL,								"", devaSubCommandTable },
-			{ "eventgm",		RBAC_PERM_COMMAND_EVENTGM,					true, NULL,									"", eventGMCommandTable},
-			{ "headgm",			RBAC_PERM_COMMAND_HEADGM,					true, NULL,									"", headGMCommandTable },
+            { "custom",         rbac::RBAC_PERM_COMMAND_CUSTOM,					true,	NULL,								"", devaSubCommandTable },
+			{ "eventgm",		rbac::RBAC_PERM_COMMAND_EVENTGM,					true, NULL,									"", eventGMCommandTable},
+			{ "headgm",			rbac::RBAC_PERM_COMMAND_HEADGM,					true, NULL,									"", headGMCommandTable },
             { NULL,				0,											false,	NULL,								"", NULL }
         };
         return commandTable;
@@ -536,8 +536,8 @@ class Custom_EditExcistingCommands : public CommandScript
             {
         static ChatCommand commandTable[] =
         {
-            { "nameannounce",   RBAC_PERM_COMMAND_NAMEANNOUNCE,      true,   &HandleNameAnnounceCommand,         "", NULL }, //moved from cs_message.cpp
-            { "gmnameannounce", RBAC_PERM_COMMAND_GMNAMEANNOUNCE,      true,   &HandleGMNameAnnounceCommand,       "", NULL }, //moved from cs_message.cpp
+            { "nameannounce",   rbac::RBAC_PERM_COMMAND_NAMEANNOUNCE,      true,   &HandleNameAnnounceCommand,         "", NULL }, //moved from cs_message.cpp
+            { "gmnameannounce", rbac::RBAC_PERM_COMMAND_GMNAMEANNOUNCE,      true,   &HandleGMNameAnnounceCommand,       "", NULL }, //moved from cs_message.cpp
             { NULL,             0,                  false,  NULL,                               "", NULL }
         };
         return commandTable;
