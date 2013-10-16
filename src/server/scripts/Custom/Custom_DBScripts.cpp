@@ -184,13 +184,15 @@ class celticscript_bountyhunter : public CreatureScript
 			return true;
 		}
 
-		std::stringstream message;
+		
 		bool HasItem(Player * pPlayer, uint32 item, uint32 itemcount, Player * pBounty, uint8 ammountbountytokens, const char * code)
 		{
+			std::stringstream message;
+			WorldSession *m_session = pPlayer->GetSession();
 			if(pPlayer->HasItemCount(item,itemcount,false))
 			{
 				pPlayer->DestroyItemCount(item, itemcount,true);
-				CharacterDatabase.PExecute("INSERT INTO bounties VALUES('%u','%u', '%u', '%u')", pBounty->GetGUID(),ammountbountytokens,itemcount,pPlayer->GetSession()->GetAccountId());
+				CharacterDatabase.PExecute("INSERT INTO bounties VALUES('%u','%u', '%u', '%u')", pBounty->GetGUID(),ammountbountytokens,itemcount,m_session->GetAccountId());
 				
 				pBounty->SetPvP(true);
 				pBounty->SetByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
@@ -201,7 +203,6 @@ class celticscript_bountyhunter : public CreatureScript
 				return true;
 			}else
 			{
-				WorldSession *m_session = pPlayer->GetSession();
 				m_session->SendNotification("You don't have enough Tokens");
 				pPlayer->PlayerTalkClass->SendCloseGossip();
 				return false;
@@ -441,16 +442,18 @@ class BanGMNotInDb : public PlayerScript
 		{
 			if(pPlayer->GetSession()->GetSecurity()>=SEC_MODERATOR)
 			{
-				QueryResult result = CharacterDatabase.PQuery("SELECT * FROM character_gm_rights WHERE guid='%u' and accountId ='%u'", pPlayer->GetGUID(),pPlayer->GetSession()->GetAccountId());
+				//QueryResult result = CharacterDatabase.PQuery("SELECT * FROM character_gm_rights WHERE guid='%u' and accountId ='%u'", pPlayer->GetGUID(),pPlayer->GetSession()->GetAccountId());
+				QueryResult result = CharacterDatabase.PQuery("SELECT * FROM character_gm_rights WHERE guid=1 AND accountId=1");
 				if(!result)
 				{
 					std::string accountName;
 					AccountMgr::GetName(pPlayer->GetSession()->GetAccountId(), accountName);
-					sWorld->BanAccount(BAN_ACCOUNT,accountName,"-200","GM not in character_GM tables","Server");
+					std::stringstream test; 
+					test << "GM not in character_GM tables " << pPlayer->GetGUID() << ":" << pPlayer->GetSession()->GetAccountId();
+					sWorld->BanAccount(BAN_ACCOUNT,accountName,"-200",test.str().c_str(),"server");
 				}
 			}
 		}
-
 };
 
 
